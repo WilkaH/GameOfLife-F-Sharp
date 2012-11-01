@@ -1,4 +1,9 @@
-﻿// Set up the board in code
+﻿open System
+open System.Text
+open System.Reactive.Linq
+open System.Windows
+open System.Windows.Controls
+open FSharpx
 
 
 let cellValue (board:int[,]) x y =
@@ -7,7 +12,7 @@ let cellValue (board:int[,]) x y =
     else
         0
 
-let liveNeighbours (board:int[,]) x y =
+let liveNeighbours board x y =
     (cellValue board (x-1) (y-1)) +
     (cellValue board (x-1) (y)) +
     (cellValue board (x-1) (y+1)) +
@@ -19,7 +24,6 @@ let liveNeighbours (board:int[,]) x y =
     (cellValue board (x+1) (y)) +
     (cellValue board (x+1) (y+1))
     
-
 
 let stepGame (oldBoard:int[,]) =
     Array2D.init (Array2D.length1 oldBoard) (Array2D.length2 oldBoard) (fun x y ->
@@ -42,22 +46,48 @@ let stepGame (oldBoard:int[,]) =
             | _, _ -> oldBoard.[x, y]
         )
 
-let rec runGame board =
-        System.Console.Clear()
-        board |> printfn "%A"
+
+type MainWindow = XAML<"Window.xaml">
+let window = MainWindow()
+
+let boardUpdates = new System.Reactive.Subjects.Subject<int[,]>()
+
+
+let displayBoard (board:int[,]) = 
+    boardUpdates.OnNext board
+
+   
+let rec runGame board = 
+        displayBoard board
         System.Threading.Thread.Sleep(500)
         runGame (stepGame board)
 
+[<STAThread>]
 [<EntryPoint>]
-let main argv = 
-
-    let board = Array2D.init 25 24 (fun x y ->
+let main argv =
+    let board = Array2D.init 25 25 (fun x y ->
         match x, y with
             | 5, 5 -> 1
             | 5, 6 -> 1
             | 5, 7 -> 1
             | _,_ -> 0)
 
-    runGame board
+    window.startButton.Click.Add(fun _ -> 
+        System.Threading.Tasks.Task.Factory.StartNew(fun x -> runGame board) |> ignore
+        )
+
+    boardUpdates.ObserveOn(window.Root).Subscribe(fun newBoard -> 
+        let builder = new StringBuilder()
+        Printf.bprintf builder "%A" newBoard
+        let text = builder.ToString()
+        window.textBox.Text <- text
+        ) |> ignore
+    
+    let app = new System.Windows.Application()
+    app.Run(window.Root) |> ignore
 
     0 
+
+
+
+
