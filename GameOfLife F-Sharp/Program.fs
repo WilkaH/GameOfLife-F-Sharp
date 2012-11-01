@@ -22,7 +22,7 @@ let liveNeighbours (board:int[,]) x y =
 
 
 let stepGame (oldBoard:int[,]) =
-    Array2D.init 24 24 (fun x y ->
+    Array2D.init (Array2D.length1 oldBoard) (Array2D.length2 oldBoard) (fun x y ->
         
         let neighbours = liveNeighbours oldBoard x y
         let alive = oldBoard.[x, y] = 1
@@ -51,7 +51,7 @@ let rec runGame board =
 [<EntryPoint>]
 let main argv = 
 
-    let board = Array2D.init 24 24 (fun x y ->
+    let board = Array2D.init 25 24 (fun x y ->
         match x, y with
             | 5, 5 -> 1
             | 5, 6 -> 1
