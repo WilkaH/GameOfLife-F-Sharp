@@ -42,25 +42,22 @@ let stepGame (oldBoard:int[,]) =
             | _, _ -> oldBoard.[x, y]
         )
 
-
-
-        
+let rec runGame board =
+        System.Console.Clear()
+        board |> printfn "%A"
+        System.Threading.Thread.Sleep(500)
+        runGame (stepGame board)
 
 [<EntryPoint>]
 let main argv = 
 
-    // TODO: do this without board being mutable
-    let mutable board = Array2D.init 24 24 (fun x y ->
+    let board = Array2D.init 24 24 (fun x y ->
         match x, y with
             | 5, 5 -> 1
             | 5, 6 -> 1
             | 5, 7 -> 1
             | _,_ -> 0)
 
-    while true do
-        System.Console.Clear()
-        board |> printfn "%A"
-        board <- stepGame board
-        System.Threading.Thread.Sleep(500)
+    runGame board
 
     0 
