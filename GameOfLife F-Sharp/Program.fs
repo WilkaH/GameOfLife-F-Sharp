@@ -7,8 +7,8 @@ open System.Windows
 open System.Windows.Controls
 open FSharpx
 
-let BoardWidth = 100
-let BoardHeight = 100
+let BoardWidth = 150
+let BoardHeight = 150
 let CellSize = 10
 
 
@@ -43,28 +43,6 @@ let liveNeighbours board x y =
     (cellValue board (x+1) (y+1))
     
 
-let initBoardImage (board:int[,]) = 
-
-    // B G R
-    let liveRow = MakeCellRow ([0uy; 0uy; 0uy; 0uy])
-    let deadRow = MakeCellRow ([64uy; 0uy; 250uy; 0uy]) 
-    
-    let image = new WriteableBitmap(CellSize * BoardWidth, CellSize * BoardHeight, 96.0, 96.0, PixelFormats.Bgr32, null)
-    for x = 0 to (Array2D.length1 board) - 1  do
-        for y = 0 to (Array2D.length2 board) - 1  do
-                        
-            let imageX = x * CellSize
-            let imageY = y * CellSize
-            
-            let pixelColor = if board.[x,y] = 1 then liveRow else deadRow
-
-            for innerY = 0 to CellSize - 1 do
-                let rect = new System.Windows.Int32Rect(imageX, (imageY + innerY), CellSize, 1)
-                image.WritePixels(rect, pixelColor, (pixelColor.Length), 0)
-            
-    image.Freeze()
-    image
-
 let nextBoardImage (oldBoard:int[,]) (nextBoard:int[,]) oldImage = 
 
     // B G R
@@ -88,6 +66,10 @@ let nextBoardImage (oldBoard:int[,]) (nextBoard:int[,]) oldImage =
     image.Freeze()
     image
 
+let initBoardImage (board:int[,]) = 
+    let invalidBoard = Array2D.init BoardWidth BoardHeight (fun x y -> -1)
+    let blankImage = new WriteableBitmap(CellSize * BoardWidth, CellSize * BoardHeight, 96.0, 96.0, PixelFormats.Bgr32, null)
+    nextBoardImage invalidBoard board blankImage
 
 let stepGame (oldBoard:int[,]) oldImage =
     let nextBoard = Array2D.init (Array2D.length1 oldBoard) (Array2D.length2 oldBoard) (fun x y ->        
@@ -115,10 +97,6 @@ let stepGame (oldBoard:int[,]) oldImage =
 
 type MainWindow = XAML<"Window.xaml">
 let window = MainWindow()
-
-
-
-
 
 let rec runGame board boardImage = 
         boardUpdates.OnNext boardImage
@@ -153,13 +131,13 @@ let main argv =
             | 13, 9 -> 1
 
             // Acorn
-            | 43, 55 -> 1
-            | 42, 57 -> 1
-            | 43, 57 -> 1
-            | 45, 56 -> 1
-            | 46, 57 -> 1
-            | 47, 57 -> 1
-            | 48, 57 -> 1
+            | 83, 85 -> 1
+            | 82, 87 -> 1
+            | 83, 87 -> 1
+            | 85, 86 -> 1
+            | 86, 87 -> 1
+            | 87, 87 -> 1
+            | 88, 87 -> 1
             
             // default
             | _,_ -> 0)

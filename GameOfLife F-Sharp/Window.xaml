@@ -17,8 +17,7 @@
         </Viewbox> 
 
         <StackPanel Grid.Column="1" Width="140">
-            <Button Name="startButton" Margin="10" >Start</Button>
-            <Button Name="stopButton" Margin="10" >Stop</Button>
+            <Button Name="startButton" Margin="10">Start</Button>
         </StackPanel>
 
     </Grid>
