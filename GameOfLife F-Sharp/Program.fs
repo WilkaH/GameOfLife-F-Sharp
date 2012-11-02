@@ -1,9 +1,15 @@
 ﻿open System
 open System.Text
+open System.Windows.Media
+open System.Windows.Media.Imaging
 open System.Reactive.Linq
 open System.Windows
 open System.Windows.Controls
 open FSharpx
+
+let BoardWidth = 25
+let BoardHeight = 25
+let CellSize = 10
 
 
 let cellValue (board:int[,]) x y =
@@ -50,11 +56,41 @@ let stepGame (oldBoard:int[,]) =
 type MainWindow = XAML<"Window.xaml">
 let window = MainWindow()
 
-let boardUpdates = new System.Reactive.Subjects.Subject<int[,]>()
+let boardUpdates = new System.Reactive.Subjects.Subject<ImageSource>()
+    
+let rec MakeCellRowImpl bytes n =
+    match n with
+    | 1 -> bytes
+    | _ -> List.append bytes (MakeCellRowImpl bytes (n-1))   
+
+
+let MakeCellRow (bytes:List<byte>) =
+    (MakeCellRowImpl bytes CellSize) |> List.toArray
 
 
 let displayBoard (board:int[,]) = 
-    boardUpdates.OnNext board
+
+    // B G R
+    let liveRow = MakeCellRow ([0uy; 0uy; 0uy; 0uy])
+    let deadRow = MakeCellRow ([64uy; 0uy; 250uy; 0uy]) 
+    
+    // TODO: I've got some off-by-one errors going on here. I shoudn't be adding to the size of the bitmap
+    // and looping to size-1 - my brain is too foggy to work out what's going on at the moment.
+    let image = new WriteableBitmap(CellSize * BoardWidth + 1, CellSize * BoardHeight + 1, 96.0, 96.0, PixelFormats.Bgr32, null)
+    for x = 0 to (Array2D.length1 board) - 1  do
+        for y = 0 to (Array2D.length2 board) - 1  do
+                        
+            let imageX = x * CellSize
+            let imageY = y * CellSize
+            
+            let pixelColor = if board.[x,y] = 1 then liveRow else deadRow
+
+            for innerY = 0 to CellSize do
+                let rect = new System.Windows.Int32Rect(imageX, (imageY + innerY), CellSize, 1)
+                image.WritePixels(rect, pixelColor, (pixelColor.Length), 0)
+            
+    image.Freeze()
+    boardUpdates.OnNext image
 
    
 let rec runGame board = 
@@ -65,7 +101,7 @@ let rec runGame board =
 [<STAThread>]
 [<EntryPoint>]
 let main argv =
-    let board = Array2D.init 25 25 (fun x y ->
+    let board = Array2D.init BoardWidth BoardHeight (fun x y ->
         match x, y with
             | 5, 5 -> 1
             | 5, 6 -> 1
@@ -76,11 +112,9 @@ let main argv =
         System.Threading.Tasks.Task.Factory.StartNew(fun x -> runGame board) |> ignore
         )
 
-    boardUpdates.ObserveOn(window.Root).Subscribe(fun newBoard -> 
-        let builder = new StringBuilder()
-        Printf.bprintf builder "%A" newBoard
-        let text = builder.ToString()
-        window.textBox.Text <- text
+    boardUpdates.ObserveOn(window.Root).Subscribe(fun boardImage -> 
+        window.image.Source <- boardImage
+        
         ) |> ignore
     
     let app = new System.Windows.Application()

@@ -12,7 +12,9 @@
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <TextBox Name="textBox" Grid.Column="0" Background="LightBlue" />
+        <Viewbox Grid.Column="0" >
+            <Image Name="image"/>
+        </Viewbox> 
 
         <StackPanel Grid.Column="1" Width="140">
             <Button Name="startButton" Margin="10" >Start</Button>
