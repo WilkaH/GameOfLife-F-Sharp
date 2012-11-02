@@ -7,9 +7,21 @@ open System.Windows
 open System.Windows.Controls
 open FSharpx
 
-let BoardWidth = 25
-let BoardHeight = 25
+let BoardWidth = 100
+let BoardHeight = 100
 let CellSize = 10
+
+
+let boardUpdates = new System.Reactive.Subjects.Subject<ImageSource>()
+    
+let rec MakeCellRowImpl bytes n =
+    match n with
+    | 1 -> bytes
+    | _ -> List.append bytes (MakeCellRowImpl bytes (n-1))   
+
+
+let MakeCellRow (bytes:List<byte>) =
+    (MakeCellRowImpl bytes CellSize) |> List.toArray
 
 
 let cellValue (board:int[,]) x y =
@@ -31,44 +43,7 @@ let liveNeighbours board x y =
     (cellValue board (x+1) (y+1))
     
 
-let stepGame (oldBoard:int[,]) =
-    Array2D.init (Array2D.length1 oldBoard) (Array2D.length2 oldBoard) (fun x y ->
-        
-        let neighbours = liveNeighbours oldBoard x y
-        let alive = oldBoard.[x, y] = 1
-
-        match alive, neighbours with
-            // Any live cell with fewer than two live neighbours dies, as if caused by under-population.
-            | true, x when x < 2 -> 0 
-            // Any live cell with two or three live neighbours lives on to the next generation.
-            | true, 2 -> 1
-            | true, 3 -> 1
-            // Any live cell with more than three live neighbours dies, as if by overcrowding.
-            | true, x when x > 3 -> 0
-            // Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
-            | false, 3 -> 1
-
-            // default is no change
-            | _, _ -> oldBoard.[x, y]
-        )
-
-
-type MainWindow = XAML<"Window.xaml">
-let window = MainWindow()
-
-let boardUpdates = new System.Reactive.Subjects.Subject<ImageSource>()
-    
-let rec MakeCellRowImpl bytes n =
-    match n with
-    | 1 -> bytes
-    | _ -> List.append bytes (MakeCellRowImpl bytes (n-1))   
-
-
-let MakeCellRow (bytes:List<byte>) =
-    (MakeCellRowImpl bytes CellSize) |> List.toArray
-
-
-let displayBoard (board:int[,]) = 
+let initBoardImage (board:int[,]) = 
 
     // B G R
     let liveRow = MakeCellRow ([0uy; 0uy; 0uy; 0uy])
@@ -88,12 +63,76 @@ let displayBoard (board:int[,]) =
                 image.WritePixels(rect, pixelColor, (pixelColor.Length), 0)
             
     image.Freeze()
-    boardUpdates.OnNext image
+    image
 
-let rec runGame board = 
-        displayBoard board
-        System.Threading.Thread.Sleep(500)
-        runGame (stepGame board)
+let nextBoardImage (oldBoard:int[,]) (nextBoard:int[,]) oldImage = 
+
+    // B G R
+    let liveRow = MakeCellRow ([0uy; 0uy; 0uy; 0uy])
+    let deadRow = MakeCellRow ([64uy; 0uy; 250uy; 0uy]) 
+    
+    let image = new WriteableBitmap(oldImage)
+    for x = 0 to (Array2D.length1 oldBoard) - 1  do
+        for y = 0 to (Array2D.length2 oldBoard) - 1  do
+                        
+            if oldBoard.[x,y] <> nextBoard.[x,y] then
+                let imageX = x * CellSize
+                let imageY = y * CellSize
+            
+                let pixelColor = if nextBoard.[x,y] = 1 then liveRow else deadRow
+
+                for innerY = 0 to CellSize - 1 do
+                    let rect = new System.Windows.Int32Rect(imageX, (imageY + innerY), CellSize, 1)
+                    image.WritePixels(rect, pixelColor, (pixelColor.Length), 0)
+            
+    image.Freeze()
+    image
+
+
+let stepGame (oldBoard:int[,]) oldImage =
+    let nextBoard = Array2D.init (Array2D.length1 oldBoard) (Array2D.length2 oldBoard) (fun x y ->        
+        let neighbours = liveNeighbours oldBoard x y
+        let alive = oldBoard.[x, y] = 1
+
+        match alive, neighbours with
+            // Any live cell with fewer than two live neighbours dies, as if caused by under-population.
+            | true, x when x < 2 -> 0 
+            // Any live cell with two or three live neighbours lives on to the next generation.
+            | true, 2 -> 1
+            | true, 3 -> 1
+            // Any live cell with more than three live neighbours dies, as if by overcrowding.
+            | true, x when x > 3 -> 0
+            // Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction.
+            | false, 3 -> 1
+
+            // default is no change
+            | _, _ -> oldBoard.[x, y]
+        )
+
+    let nextImage = nextBoardImage oldBoard nextBoard oldImage
+    (nextBoard, nextImage)
+
+
+type MainWindow = XAML<"Window.xaml">
+let window = MainWindow()
+
+
+
+
+
+let rec runGame board boardImage = 
+        boardUpdates.OnNext boardImage
+        System.Threading.Thread.Sleep(50)
+
+        let (nextBoard, nextImage) = stepGame board boardImage 
+
+        runGame nextBoard nextImage
+    
+let initGame board = 
+    let boardImage = initBoardImage board
+    boardUpdates.OnNext boardImage
+    System.Threading.Thread.Sleep(50)
+    runGame board boardImage
 
 [<STAThread>]
 [<EntryPoint>]
@@ -114,19 +153,19 @@ let main argv =
             | 13, 9 -> 1
 
             // Acorn
-            | 3, 15 -> 1
-            | 2, 17 -> 1
-            | 3, 17 -> 1
-            | 5, 16 -> 1
-            | 6, 17 -> 1
-            | 7, 17 -> 1
-            | 8, 17 -> 1
+            | 43, 55 -> 1
+            | 42, 57 -> 1
+            | 43, 57 -> 1
+            | 45, 56 -> 1
+            | 46, 57 -> 1
+            | 47, 57 -> 1
+            | 48, 57 -> 1
             
             // default
             | _,_ -> 0)
 
     window.startButton.Click.Add(fun _ -> 
-        System.Threading.Tasks.Task.Factory.StartNew(fun x -> runGame board) |> ignore
+        System.Threading.Tasks.Task.Factory.StartNew(fun x -> initGame board) |> ignore
         )
 
     boardUpdates.ObserveOn(window.Root).Subscribe(fun boardImage -> 
@@ -135,9 +174,7 @@ let main argv =
         ) |> ignore
     
     let app = new System.Windows.Application()
-    app.Run(window.Root) |> ignore
-
-    0 
+    app.Run(window.Root) 
 
 
 
