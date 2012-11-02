@@ -74,9 +74,7 @@ let displayBoard (board:int[,]) =
     let liveRow = MakeCellRow ([0uy; 0uy; 0uy; 0uy])
     let deadRow = MakeCellRow ([64uy; 0uy; 250uy; 0uy]) 
     
-    // TODO: I've got some off-by-one errors going on here. I shoudn't be adding to the size of the bitmap
-    // and looping to size-1 - my brain is too foggy to work out what's going on at the moment.
-    let image = new WriteableBitmap(CellSize * BoardWidth + 1, CellSize * BoardHeight + 1, 96.0, 96.0, PixelFormats.Bgr32, null)
+    let image = new WriteableBitmap(CellSize * BoardWidth, CellSize * BoardHeight, 96.0, 96.0, PixelFormats.Bgr32, null)
     for x = 0 to (Array2D.length1 board) - 1  do
         for y = 0 to (Array2D.length2 board) - 1  do
                         
@@ -85,14 +83,13 @@ let displayBoard (board:int[,]) =
             
             let pixelColor = if board.[x,y] = 1 then liveRow else deadRow
 
-            for innerY = 0 to CellSize do
+            for innerY = 0 to CellSize - 1 do
                 let rect = new System.Windows.Int32Rect(imageX, (imageY + innerY), CellSize, 1)
                 image.WritePixels(rect, pixelColor, (pixelColor.Length), 0)
             
     image.Freeze()
     boardUpdates.OnNext image
 
-   
 let rec runGame board = 
         displayBoard board
         System.Threading.Thread.Sleep(500)
@@ -103,9 +100,29 @@ let rec runGame board =
 let main argv =
     let board = Array2D.init BoardWidth BoardHeight (fun x y ->
         match x, y with
+            // Blinker 
             | 5, 5 -> 1
             | 5, 6 -> 1
             | 5, 7 -> 1
+
+            // Toad 
+            | 10, 8 -> 1
+            | 11, 8 -> 1
+            | 12, 8 -> 1
+            | 11, 9 -> 1
+            | 12, 9 -> 1
+            | 13, 9 -> 1
+
+            // Acorn
+            | 3, 15 -> 1
+            | 2, 17 -> 1
+            | 3, 17 -> 1
+            | 5, 16 -> 1
+            | 6, 17 -> 1
+            | 7, 17 -> 1
+            | 8, 17 -> 1
+            
+            // default
             | _,_ -> 0)
 
     window.startButton.Click.Add(fun _ -> 
@@ -121,6 +138,7 @@ let main argv =
     app.Run(window.Root) |> ignore
 
     0 
+
 
 
 
